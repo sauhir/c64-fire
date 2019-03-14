@@ -20,6 +20,8 @@ zp2      = $fd
 
 getin    = $ffe4
 
+bgcolor  = $d021
+
 init
          cld
          clc
@@ -27,6 +29,7 @@ init
          sta offset
          sta wcount
          sta yscroll
+         sta bgcolor
 
          jsr clrbuf ;clear buffer
          ;sei
@@ -73,8 +76,8 @@ sloop1
          cpy #$28  ;check if end of row
          bne sloop1 ;loop if not
 
-;Add 40 to zero page pointer to move
-;to the next line
+         ;Add 40 to zero page pointer
+         ;to move to the next line
          clc
          lda zp
          adc #$28
@@ -82,7 +85,7 @@ sloop1
          lda zp+1
          adc #$00
          sta zp+1
-;Same with zp2
+         ;Repeat same for zp2
          clc
          lda zp2
          adc #$28
@@ -148,7 +151,7 @@ wloop2
 
          inc wcount  ;inc frame counter
          lda wcount  ;check if counter
-         cmp #$06    ;reached 10
+         cmp #$04    ;reached 4
          bne wloop1  ;if not, loop
 
          lda #$00    ;reset counter
@@ -228,30 +231,56 @@ clrloop
 printscr
          ldx #$00
 printlp
-         lda scrbuf,x
-         jsr transp
-         sta scrmem,x
+         lda scrbuf,x ;load from buf
+         jsr mapchar  ;map to char
+         sta scrmem,x ;write to screen
+         lda scrbuf,x ;load from buf
+         jsr mapcolor ;map to color
+         sta clrmem,x ;write to color
+
          lda scrbuf+$100,x
-         jsr transp
+         jsr mapchar
          sta scrmem+$100,x
+         lda scrbuf+$100,x
+         jsr mapcolor
+         sta clrmem+$100,x
+
          lda scrbuf+$200,x
-         jsr transp
+         jsr mapchar
          sta scrmem+$200,x
+         lda scrbuf+$200,x
+         jsr mapcolor
+         sta clrmem+$200,x
+
          lda scrbuf+$300,x
-         jsr transp
+         jsr mapchar
          sta scrmem+$300,x
+         lda scrbuf+$300,x
+         jsr mapcolor
+         sta clrmem+$300,x
+
          inx
          bne printlp
          rts
 
 ;---------------------------------------
-;transpose character
-;transposes the char in accumulator
+;map character
+;maps the value in accumulator
 ;to the value in 'chars' table
 ;---------------------------------------
-transp
+mapchar
          tay
          lda chars, y
+         rts
+
+;---------------------------------------
+;map color
+;maps the value in accumulator
+;to the value in 'colors' table
+;---------------------------------------
+mapcolor
+         tay
+         lda colors, y
          rts
 
 ;---------------------------------------
@@ -265,12 +294,23 @@ kbwait
          beq kbwait
          rts
 
-;list of characters for transposing
-chars    .byte $20, $31, $31, $32, $32
-         .byte $33, $33, $34, $34, $35
-         .byte $35, $36, $36, $37, $37
-         .byte $38, $38, $39, $39, $39
-         .byte $39, $39, $39, $39, $39
-         .byte $39, $39, $39, $39, $39
-         .byte $39, $39, $39, $39, $39
-         .byte $39, $39, $39, $39, $39
+;list of 32 values for character mapping
+chars    .byte $20, $66, $66, $66
+         .byte $66, $66, $66, $66
+         .byte $a0, $a0, $a0, $a0
+         .byte $a0, $a0, $a0, $a0
+         .byte $a0, $a0, $a0, $a0
+         .byte $a0, $a0, $a0, $a0
+         .byte $a0, $a0, $a0, $a0
+         .byte $a0, $a0, $a0, $a0
+
+;list of 32 values for color mapping
+colors   .byte $00, $0b, $0c, $02
+         .byte $02, $0a, $08, $08
+         .byte $08, $08, $08, $07
+         .byte $07, $07, $07, $01
+         .byte $01, $01, $01, $01
+         .byte $01, $01, $01, $01
+         .byte $01, $01, $01, $01
+         .byte $01, $01, $01, $01
+
