@@ -19,7 +19,7 @@ zp       = $fb
 zp2      = $fd
 
 getin    = $ffe4
-
+random   = $d41b
 bgcolor  = $d021
 
 init
@@ -31,12 +31,15 @@ init
          sta yscroll
          sta bgcolor
 
+         jsr init_random
+
          jsr clrbuf ;clear buffer
          ;sei
+
 nextpage
 
          ;Store 24 to row counter
-         ldx #$18
+         ldx #$0e
 
          ;load pointer to screen memory
          ;into zero page variable.
@@ -105,8 +108,11 @@ sloop1
 ;draw new line
 ;---------------------------------------
          ldy #$00
-         lda #$00   ;lead the space char
 lloop1
+         lda random   ;lead the space char
+         and #$0f
+         lsr
+         adc #$01
          sta (zp),y ;write line of spc
          iny
          cpy #$28   ;check if end of row
@@ -119,22 +125,17 @@ lloop1
          sta (zp),y
          iny
          sta (zp),y
+         iny
+         sta (zp),y
+         iny
+         sta (zp),y
 
 ;randomize offset for the next char.
-;the randomization is done by reading
-;timer registers and combining them with
-;bitwise operations, additions and
-;bitshifts.
          clc
-         lda $dc04
-         sta xor
-         adc #$05
-         lsr
-         eor $dc06
-         eor xor
-         and #$3f
-         cmp #$28   ;left shift if coord
-         bcc llskip ;does not fit
+         lda random
+         and #$2f
+         cmp #$25   ;right shift if
+         bcc llskip ;coord does not fit
          lsr        ;on screen
 llskip   sta offset
 
@@ -151,7 +152,7 @@ wloop2
 
          inc wcount  ;inc frame counter
          lda wcount  ;check if counter
-         cmp #$04    ;reached 4
+         cmp #$01    ;reached 4
          bne wloop1  ;if not, loop
 
          lda #$00    ;reset counter
@@ -233,31 +234,31 @@ printscr
 printlp
          lda scrbuf,x ;load from buf
          jsr mapchar  ;map to char
-         sta scrmem,x ;write to screen
+         sta scrmem+$1b8,x ;write to screen
          lda scrbuf,x ;load from buf
          jsr mapcolor ;map to color
-         sta clrmem,x ;write to color
+         sta clrmem+$1b8,x ;write to color
 
          lda scrbuf+$100,x
          jsr mapchar
-         sta scrmem+$100,x
+         sta scrmem+$2b8,x
          lda scrbuf+$100,x
          jsr mapcolor
-         sta clrmem+$100,x
+         sta clrmem+$2b8,x
 
          lda scrbuf+$200,x
          jsr mapchar
-         sta scrmem+$200,x
+         sta scrmem+$3b8,x
          lda scrbuf+$200,x
          jsr mapcolor
-         sta clrmem+$200,x
+         sta clrmem+$3b8,x
 
-         lda scrbuf+$300,x
-         jsr mapchar
-         sta scrmem+$300,x
-         lda scrbuf+$300,x
-         jsr mapcolor
-         sta clrmem+$300,x
+;         lda scrbuf+$300,x
+;         jsr mapchar
+;         sta scrmem+$300,x
+;         lda scrbuf+$300,x
+;         jsr mapcolor
+;         sta clrmem+$300,x
 
          inx
          bne printlp
@@ -284,6 +285,18 @@ mapcolor
          rts
 
 ;---------------------------------------
+;Initialize SID chip for random number
+;generation
+;---------------------------------------
+init_random
+         lda #$ff  ; maximum frequency value
+         sta $d40e ; voice 3 frequency low byte
+         sta $d40f ; voice 3 frequency high byte
+         lda #$80  ; noise waveform, gate bit off
+         sta $d412 ; voice 3 control register
+         rts
+
+;---------------------------------------
 ;kbwait
 ;wait for keyboard input
 ;and determine what action to take.
@@ -295,8 +308,8 @@ kbwait
          rts
 
 ;list of 32 values for character mapping
-chars    .byte $20, $66, $66, $66
-         .byte $66, $66, $66, $66
+chars    .byte $20, $20, $66, $66
+         .byte $66, $66, $a0, $a0
          .byte $a0, $a0, $a0, $a0
          .byte $a0, $a0, $a0, $a0
          .byte $a0, $a0, $a0, $a0
@@ -305,10 +318,10 @@ chars    .byte $20, $66, $66, $66
          .byte $a0, $a0, $a0, $a0
 
 ;list of 32 values for color mapping
-colors   .byte $00, $0b, $0c, $02
-         .byte $02, $0a, $08, $08
-         .byte $08, $08, $08, $07
-         .byte $07, $07, $07, $01
+colors   .byte $00, $0b, $0b, $02
+         .byte $0a, $08, $08, $08
+         .byte $08, $07, $07, $07
+         .byte $07, $01, $01, $01
          .byte $01, $01, $01, $01
          .byte $01, $01, $01, $01
          .byte $01, $01, $01, $01
