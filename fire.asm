@@ -62,7 +62,7 @@ nextpage
 ;contents one line up. with each line we
 ;read the corresponding character from
 ;the next line and replace the current
-;charater.
+;character.
 ;blur routine is called for each char
 ;
 ;---------------------------------------
